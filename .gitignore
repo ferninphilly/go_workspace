@@ -1,3 +1,4 @@
 *.pyc
 *.DS_St*
 *.yaml
+config.json
