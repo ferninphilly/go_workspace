@@ -1,31 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"strconv"
-	"time"
-	ai "txoddsrush/apiinterface"
-	db "txoddsrush/dbconnection"
-	mc "txoddsrush/myconfig"
+	vz "txoddsrush/visualizations"
 )
 
 func main() {
-	now := int32(time.Now().UTC().Unix())
-	cfg := mc.ReturnConfig()
-	d := ai.ReturnFeedOdds()
-	i := 0
-	for _, v := range d.Match {
-		for _, val := range v.Bookmaker {
-			for _, sv := range val.Offer.Odds {
-				db.RunQuery(cfg, "dbconnection/sqlQueries/InsertOdds.sql", val.Offer.Attributes.ID,
-					val.Attributes.Bid, v.Attributes.ID, sv.Attributes.I, sv.O1, sv.O3, sv.O2,
-					fmt.Sprint(now), fmt.Sprint(now))
-				fmt.Println("Completed insert for row: " + strconv.Itoa(i))
-				i++
-			}
-		}
-
-	}
+	vz.RunServer()
 }
 
 //a := db.DBConn(cfg)

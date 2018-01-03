@@ -3,6 +3,7 @@ package transformations
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	ai "txoddsrush/apiinterface"
@@ -18,6 +19,7 @@ func InsertBookies() string {
 	query := "dbconnection/sqlQueries/InsertBookies.sql"
 	a := ai.ReturnFeedOdds()
 	ub := make(map[string]string) //for "unique bookies"
+	cfg := mc.ReturnConfig()
 	for _, v := range a.Match {
 		for _, val := range v.Bookmaker {
 			if _, ok := ub[val.Attributes.Bid]; !ok {
@@ -26,7 +28,7 @@ func InsertBookies() string {
 		}
 	}
 	for k, v := range ub {
-		db.RunQuery(query, k, v)
+		db.RunQuery(cfg, query, k, v)
 		result := fmt.Sprintf("Entered bookie %s into table", v)
 		fmt.Println(result)
 	}
@@ -57,4 +59,25 @@ func InsertTeams() string {
 		fmt.Println("Completed insert for " + v.Name)
 	}
 	return "Successfully populated the dim_teams table"
+}
+
+//InsertOdds is how I am updating the odds settings.
+//I will obviously need to update to do upserts because I don't want dupe data.
+func InsertOdds() {
+	now := int32(time.Now().UTC().Unix())
+	cfg := mc.ReturnConfig()
+	d := ai.ReturnFeedOdds()
+	i := 0
+	for _, v := range d.Match {
+		for _, val := range v.Bookmaker {
+			for _, sv := range val.Offer.Odds {
+				db.RunQuery(cfg, "dbconnection/sqlQueries/InsertOdds.sql", val.Offer.Attributes.ID,
+					val.Attributes.Bid, v.Attributes.ID, sv.Attributes.I, sv.O1, sv.O3, sv.O2,
+					fmt.Sprint(now), fmt.Sprint(now))
+				fmt.Println("Completed insert for row: " + strconv.Itoa(i))
+				i++
+			}
+		}
+
+	}
 }
