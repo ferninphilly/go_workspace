@@ -66,18 +66,6 @@ type CreateOdds struct {
 	} `json:"match"`
 }
 
-//Odds is the lowest level
-type Odds struct {
-	Attributes struct {
-		I            string    `json:"i"`
-		Time         time.Time `json:"time"`
-		StartingTime time.Time `json:"starting_time"`
-	} `json:"@attributes"`
-	O1 string `json:"o1"`
-	O2 string `json:"o2"`
-	O3 string `json:"o3"`
-}
-
 //Bookmaker contains Bookmaker->Offer->Odds
 type Bookmaker []struct {
 	Attributes struct {
@@ -138,6 +126,18 @@ type Teams struct {
 			Sportid   string `json:"sportid"`
 		} `json:"competitor"`
 	} `json:"competitors"`
+}
+
+//Odds is the lowest level
+type Odds []struct {
+	Attributes struct {
+		I            string `json:"i"`
+		Time         string `json:"time"`
+		StartingTime string `json:"starting_time"`
+	} `json:"@attributes"`
+	O1 string `json:"o1"`
+	O2 string `json:"o2"`
+	O3 string `json:"o3"`
 }
 
 //xmlToJSON exists because not everything in the api responds to "&json=1" so sometimes we

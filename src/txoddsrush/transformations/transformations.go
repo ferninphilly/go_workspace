@@ -13,6 +13,58 @@ import (
 
 //Teams is the struct to contain our teams
 
+//ChartCreate will contain data for the charts
+type ChartCreate struct {
+	LastUpdated string
+	MatchName   string
+	Bookies     []ChartData
+}
+
+type ChartData struct {
+	BookieName string
+	Ival       []float64
+	HTeamWin   []float64
+	ATeamWin   []float64
+	Draw       []float64
+}
+
+var fo = ai.ReturnFeedOdds()
+
+//CreateCharts is how we populate the ChartCreate struct with data from the api
+func (cc *ChartCreate) CreateCharts() {
+	i := 0
+	y := 0
+	for _, v := range fo.Match[0].Bookmaker {
+		if v.Offer.Odds != nil {
+			y++
+		}
+	}
+	cd := make([]ChartData, y)
+	cc.MatchName = "Match: " + fo.Match[0].Hteam + " (Home) vs " + fo.Match[0].Ateam + " (Away)"
+	for _, sv := range fo.Match[0].Bookmaker {
+		if sv.Offer.Odds != nil {
+			cd[i].BookieName = sv.Attributes.Name
+			for _, ssv := range sv.Offer.Odds {
+				ival, err := strconv.ParseFloat(ssv.Attributes.I, 64)
+				mc.HandleError(err)
+				cd[i].Ival = append(cd[i].Ival, ival)
+				oddsH, err1 := strconv.ParseFloat(ssv.O1, 64)
+				mc.HandleError(err1)
+				cd[i].HTeamWin = append(cd[i].HTeamWin, oddsH)
+				oddsA, err2 := strconv.ParseFloat(ssv.O2, 64)
+				mc.HandleError(err2)
+				cd[i].ATeamWin = append(cd[i].ATeamWin, oddsA)
+				oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
+				mc.HandleError(err3)
+				cd[i].Draw = append(cd[i].Draw, oddsD)
+			}
+		}
+		cc.Bookies = cd
+		i++
+	}
+
+}
+
 //InsertBookies is basically how I created the Bookies table.
 //It will error out for primary key constraints if you try to do it twice.
 func InsertBookies() string {

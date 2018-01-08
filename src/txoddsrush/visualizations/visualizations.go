@@ -8,11 +8,18 @@ import (
 	"net/http"
 	"regexp"
 	mc "txoddsrush/myconfig"
+	tx "txoddsrush/transformations"
+
+	"github.com/wcharczuk/go-chart/drawing"
+
+	"github.com/kr/pretty"
+	chart "github.com/wcharczuk/go-chart"
 )
 
 //rootdir is the root directory for the pages to be served.
 const viewdir = "./visualizations/webpages/"
 
+var cc tx.ChartCreate
 var templates = template.Must(template.ParseFiles(viewdir+"edit.html", viewdir+"view.html", viewdir+"index.html"))
 
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
@@ -35,6 +42,63 @@ func indexHandler(w http.ResponseWriter, r *http.Request, title string) {
 	}
 	renderTemplate(w, "index", p)
 
+}
+
+func TransformChartData() []chart.ContinuousSeries {
+	cc.CreateCharts()
+	fmt.Println(len(cc.Bookies))
+	for _, v := range cc.Bookies {
+		pretty.Print(v)
+	}
+	colors := [4]drawing.Color{drawing.ColorBlack, drawing.ColorBlue, drawing.ColorGreen,
+		drawing.ColorRed}
+	var sries = make([]chart.ContinuousSeries, len(cc.Bookies))
+	i := 0
+	for _, v := range cc.Bookies {
+		if v.Ival != nil {
+			ser := chart.ContinuousSeries{
+				Name: v.BookieName,
+				Style: chart.Style{
+					Show:        true,
+					StrokeColor: colors[i],
+					//FillColor:   chart.GetDefaultColor(0),
+				},
+				XValues: v.Ival,
+				YValues: v.HTeamWin,
+			}
+			sries[i] = ser
+			i++
+		}
+	}
+	return sries
+}
+
+func drawChart(w http.ResponseWriter, req *http.Request) {
+	var x = TransformChartData()
+	graph := chart.Chart{
+
+		XAxis: chart.XAxis{
+			Name:      "The XAxis",
+			NameStyle: chart.StyleShow(),
+			Style:     chart.StyleShow(),
+		},
+
+		YAxis: chart.YAxis{
+			Name:      "The YAxis",
+			NameStyle: chart.StyleShow(),
+			Style:     chart.StyleShow(),
+		},
+
+		Series: []chart.Series{
+			x[0],
+			x[1],
+			x[2],
+			x[3],
+			x[4],
+		},
+	}
+	w.Header().Set("Content-Type", "image/png")
+	graph.Render(chart.PNG, w)
 }
 
 /*
@@ -98,6 +162,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 func RunServer() {
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
+	http.HandleFunc("/", drawChart)
 	//http.HandleFunc("/save/", makeHandler(saveHandler))
 	http.ListenAndServe(":9090", nil)
 }
