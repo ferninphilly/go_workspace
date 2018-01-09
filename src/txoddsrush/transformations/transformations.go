@@ -9,6 +9,10 @@ import (
 	ai "txoddsrush/apiinterface"
 	db "txoddsrush/dbconnection"
 	mc "txoddsrush/myconfig"
+
+	"github.com/kr/pretty"
+	chart "github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/drawing"
 )
 
 //Teams is the struct to contain our teams
@@ -29,17 +33,23 @@ type ChartData struct {
 }
 
 var fo = ai.ReturnFeedOdds()
+var cc ChartCreate
 
-//CreateCharts is how we populate the ChartCreate struct with data from the api
-func (cc *ChartCreate) CreateCharts() {
-	i := 0
+func getMaxNNelements() int {
 	y := 0
 	for _, v := range fo.Match[0].Bookmaker {
 		if v.Offer.Odds != nil {
 			y++
 		}
 	}
-	cd := make([]ChartData, y)
+	return y
+}
+
+//createCharts is how we populate the ChartCreate struct with data from the api
+func (cc *ChartCreate) createCharts() {
+	i := 0
+	z := 0
+	cd := make([]ChartData, getMaxNNelements()) //Create our slice of chartdata
 	cc.MatchName = "Match: " + fo.Match[0].Hteam + " (Home) vs " + fo.Match[0].Ateam + " (Away)"
 	for _, sv := range fo.Match[0].Bookmaker {
 		if sv.Offer.Odds != nil {
@@ -58,11 +68,52 @@ func (cc *ChartCreate) CreateCharts() {
 				mc.HandleError(err3)
 				cd[i].Draw = append(cd[i].Draw, oddsD)
 			}
+			cc.Bookies = cd
+			if z > len(cd[i].Ival) {
+				z = len(cd[i].Ival)
+			}
+			i++
 		}
-		cc.Bookies = cd
-		i++
 	}
+	fmt.Println(z)
 
+}
+
+func TransformChartData() []chart.ContinuousSeries {
+	cc.createCharts()
+	fmt.Println(len(cc.Bookies))
+	for _, v := range cc.Bookies {
+		pretty.Print(v)
+	}
+	colors := [9]drawing.Color{drawing.ColorBlack,
+		drawing.ColorBlue,
+		drawing.ColorGreen,
+		drawing.ColorRed,
+		drawing.ColorFromAlphaMixedRGBA(uint32(85), uint32(107), uint32(47), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(70), uint32(130), uint32(180), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(210), uint32(105), uint32(30), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(112), uint32(128), uint32(144), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(255), uint32(0), uint32(255), uint32(255)),
+	}
+	var sries = make([]chart.ContinuousSeries, len(cc.Bookies))
+	i := 0
+	for _, v := range cc.Bookies {
+		if v.Ival != nil {
+			ser := chart.ContinuousSeries{
+				Name: v.BookieName,
+				Style: chart.Style{
+					Show:        true,
+					StrokeColor: colors[i],
+					//FillColor:   chart.GetDefaultColor(0),
+				},
+				XValues: v.Ival,
+				YValues: v.HTeamWin,
+			}
+			sries[i] = ser
+			i++
+		}
+	}
+	return sries
 }
 
 //InsertBookies is basically how I created the Bookies table.

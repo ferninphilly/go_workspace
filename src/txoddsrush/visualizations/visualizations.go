@@ -10,9 +10,6 @@ import (
 	mc "txoddsrush/myconfig"
 	tx "txoddsrush/transformations"
 
-	"github.com/wcharczuk/go-chart/drawing"
-
-	"github.com/kr/pretty"
 	chart "github.com/wcharczuk/go-chart"
 )
 
@@ -44,37 +41,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 }
 
-func TransformChartData() []chart.ContinuousSeries {
-	cc.CreateCharts()
-	fmt.Println(len(cc.Bookies))
-	for _, v := range cc.Bookies {
-		pretty.Print(v)
-	}
-	colors := [4]drawing.Color{drawing.ColorBlack, drawing.ColorBlue, drawing.ColorGreen,
-		drawing.ColorRed}
-	var sries = make([]chart.ContinuousSeries, len(cc.Bookies))
-	i := 0
-	for _, v := range cc.Bookies {
-		if v.Ival != nil {
-			ser := chart.ContinuousSeries{
-				Name: v.BookieName,
-				Style: chart.Style{
-					Show:        true,
-					StrokeColor: colors[i],
-					//FillColor:   chart.GetDefaultColor(0),
-				},
-				XValues: v.Ival,
-				YValues: v.HTeamWin,
-			}
-			sries[i] = ser
-			i++
-		}
-	}
-	return sries
-}
-
 func drawChart(w http.ResponseWriter, req *http.Request) {
-	var x = TransformChartData()
+	var x = tx.TransformChartData()
 	graph := chart.Chart{
 
 		XAxis: chart.XAxis{

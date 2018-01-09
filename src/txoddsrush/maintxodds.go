@@ -2,12 +2,9 @@ package main
 
 import (
 	vz "txoddsrush/visualizations"
-
-	"github.com/kr/pretty"
 )
 
 func main() {
-	pretty.Print(vz.TransformChartData())
 	vz.RunServer()
 }
 
