@@ -10,7 +10,6 @@ import (
 	db "txoddsrush/dbconnection"
 	mc "txoddsrush/myconfig"
 
-	"github.com/kr/pretty"
 	chart "github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
 )
@@ -21,11 +20,15 @@ import (
 type ChartCreate struct {
 	LastUpdated string
 	MatchName   string
+	HomeTeam    string
+	AwayTeam    string
 	Bookies     []ChartData
 }
 
+//ChartData will contain the specific structs of data for the charts
 type ChartData struct {
 	BookieName string
+	OddsTime   []time.Time
 	Ival       []float64
 	HTeamWin   []float64
 	ATeamWin   []float64
@@ -33,59 +36,62 @@ type ChartData struct {
 }
 
 var fo = ai.ReturnFeedOdds()
-var cc ChartCreate
 
-func getMaxNNelements() int {
+func getMaxNNelements(rns int) int {
 	y := 0
-	for _, v := range fo.Match[0].Bookmaker {
+	for _, v := range fo.Match[rns].Bookmaker {
 		if v.Offer.Odds != nil {
-			y++
+			for k := range v.Offer.Odds {
+				y = k
+			}
 		}
 	}
-	return y
+	return int(y)
 }
 
-//createCharts is how we populate the ChartCreate struct with data from the api
-func (cc *ChartCreate) createCharts() {
-	i := 0
-	z := 0
-	cd := make([]ChartData, getMaxNNelements()) //Create our slice of chartdata
-	cc.MatchName = "Match: " + fo.Match[0].Hteam + " (Home) vs " + fo.Match[0].Ateam + " (Away)"
-	for _, sv := range fo.Match[0].Bookmaker {
-		if sv.Offer.Odds != nil {
-			cd[i].BookieName = sv.Attributes.Name
-			for _, ssv := range sv.Offer.Odds {
-				ival, err := strconv.ParseFloat(ssv.Attributes.I, 64)
-				mc.HandleError(err)
-				cd[i].Ival = append(cd[i].Ival, ival)
-				oddsH, err1 := strconv.ParseFloat(ssv.O1, 64)
-				mc.HandleError(err1)
-				cd[i].HTeamWin = append(cd[i].HTeamWin, oddsH)
-				oddsA, err2 := strconv.ParseFloat(ssv.O2, 64)
-				mc.HandleError(err2)
-				cd[i].ATeamWin = append(cd[i].ATeamWin, oddsA)
-				oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
-				mc.HandleError(err3)
-				cd[i].Draw = append(cd[i].Draw, oddsD)
+//CreateCharts is how we populate the ChartCreate struct with data from the api
+func CreateCharts() []ChartCreate {
+	alls := make([]ChartCreate, len(fo.Match))
+	//Create our slice of chartdata pretty.Print(fo)
+	for a, el := range fo.Match {
+		alls[a].MatchName = "Match: " + el.Hteam + " (Home) vs " + el.Ateam + " (Away)"
+		alls[a].HomeTeam = el.Hteam
+		alls[a].AwayTeam = el.Ateam
+		cd := make([]ChartData, len(el.Bookmaker))
+		layout := "2006-01-02T15:04:05Z07:00"
+		for k, sv := range el.Bookmaker {
+			if sv.Offer.Odds != nil {
+				cd[k].BookieName = sv.Attributes.Name
+				for _, ssv := range sv.Offer.Odds {
+					betime, err := time.Parse(layout, ssv.Attributes.Time)
+					mc.HandleError(err)
+					cd[k].OddsTime = append(cd[k].OddsTime, betime)
+					ival, err := strconv.ParseFloat(ssv.Attributes.I, 64)
+					mc.HandleError(err)
+					cd[k].Ival = append(cd[k].Ival, ival)
+					oddsH, err1 := strconv.ParseFloat(ssv.O1, 64)
+					mc.HandleError(err1)
+					cd[k].HTeamWin = append(cd[k].HTeamWin, oddsH)
+					oddsA, err2 := strconv.ParseFloat(ssv.O2, 64)
+					mc.HandleError(err2)
+					cd[k].ATeamWin = append(cd[k].ATeamWin, oddsA)
+					oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
+					mc.HandleError(err3)
+					cd[k].Draw = append(cd[k].Draw, oddsD)
+					fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1)
+				}
+				alls[a].Bookies = cd
 			}
-			cc.Bookies = cd
-			if z > len(cd[i].Ival) {
-				z = len(cd[i].Ival)
-			}
-			i++
 		}
 	}
-	fmt.Println(z)
-
+	return alls
 }
 
-func TransformChartData() []chart.ContinuousSeries {
-	cc.createCharts()
-	fmt.Println(len(cc.Bookies))
-	for _, v := range cc.Bookies {
-		pretty.Print(v)
-	}
-	colors := [9]drawing.Color{drawing.ColorBlack,
+//TransformChartData is the function that puts chart data into the Continuous Series.
+func TransformChartData() ([]string, [][]chart.Series) {
+	chrt := CreateCharts()
+	colors := [12]drawing.Color{
+		drawing.ColorBlack,
 		drawing.ColorBlue,
 		drawing.ColorGreen,
 		drawing.ColorRed,
@@ -94,26 +100,38 @@ func TransformChartData() []chart.ContinuousSeries {
 		drawing.ColorFromAlphaMixedRGBA(uint32(210), uint32(105), uint32(30), uint32(255)),
 		drawing.ColorFromAlphaMixedRGBA(uint32(112), uint32(128), uint32(144), uint32(255)),
 		drawing.ColorFromAlphaMixedRGBA(uint32(255), uint32(0), uint32(255), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(0), uint32(255), uint32(255), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(0), uint32(128), uint32(128), uint32(255)),
+		drawing.ColorFromAlphaMixedRGBA(uint32(0), uint32(255), uint32(0), uint32(255)),
 	}
-	var sries = make([]chart.ContinuousSeries, len(cc.Bookies))
-	i := 0
-	for _, v := range cc.Bookies {
-		if v.Ival != nil {
-			ser := chart.ContinuousSeries{
-				Name: v.BookieName,
-				Style: chart.Style{
-					Show:        true,
-					StrokeColor: colors[i],
-					//FillColor:   chart.GetDefaultColor(0),
-				},
-				XValues: v.Ival,
-				YValues: v.HTeamWin,
+	allsries := make([][]chart.Series, len(chrt))
+	var matches = make([]string, len(chrt))
+	//	layout := "Mon Jan 02 2006 15:04:05 GMT-0700"
+	for k, v := range chrt {
+		var sries = make([]chart.TimeSeries, len(v.Bookies))
+		var retsries = make([]chart.Series, len(v.Bookies))
+		for a, b := range v.Bookies {
+			if b.OddsTime != nil {
+				//				betime, err := time.Parse(layout, b.OddsTime[0])
+				ser := chart.TimeSeries{
+					Name: b.BookieName,
+					Style: chart.Style{
+						Show:        true,
+						StrokeColor: colors[a],
+						//FillColor:   chart.GetDefaultColor(0),
+					},
+					XValues: b.OddsTime,
+					YValues: b.HTeamWin,
+				}
+				sries[a] = ser
+				retsries[a] = sries[a]
+				allsries[k] = append(allsries[k], retsries[a])
 			}
-			sries[i] = ser
-			i++
 		}
+		matches[k] = v.MatchName
+
 	}
-	return sries
+	return matches, allsries
 }
 
 //InsertBookies is basically how I created the Bookies table.

@@ -109,8 +109,8 @@ type Match []struct {
 //feedOdds->Match->Bookmaker->Offer->Odds
 type feedOdds struct {
 	Attributes struct {
-		Time      time.Time `json:"time"`
-		Timestamp string    `json:"timestamp"`
+		Time      string `json:"time"`
+		Timestamp string `json:"timestamp"`
 	}
 	Match
 }
