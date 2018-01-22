@@ -7,12 +7,12 @@ So the Texas Odds api digestion is written in GOlang 1.6 by Fernando Pombeiro. I
 
 ## Components 
 The components are pretty standard- it is broken into 6 packages so far:
-1. *apiinterface*: basically the code that actually interfaces with the api
-2. *myconfig*: the config file is json and is not in the repo for security reasons.
-3. *dbconnection*: for ingestion into a database. The DDL will go up soon.
-4. *transformations*: code to transform data from the api for both the visualization and database layers
-5. *visualizations*: the visualizations code. I am working with a GO native charting package known go-charts. 
-6. *maintxodds.go*: the "main" file and entrypoint to the application.
+1. **apiinterface**: basically the code that actually interfaces with the api
+2. **myconfig**: the config file is json and is not in the repo for security reasons.
+3. **dbconnection**: for ingestion into a database. The DDL will go up soon.
+4. **transformations**: code to transform data from the api for both the visualization and database layers
+5. **visualizations**: the visualizations code. I am working with a GO native charting package known go-charts. 
+6. **maintxodds.go**: the "main" file and entrypoint to the application.
 
 ## So how does it work?
 First off, of course, you will need Golang installed on your system. I would recommend using your local system package installer (big fan of [homebrew](https://brew.sh/) myself). From there follow the directions in [this setup](https://golang.org/doc/install)
