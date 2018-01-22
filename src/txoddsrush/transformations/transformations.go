@@ -78,7 +78,7 @@ func CreateCharts() []ChartCreate {
 					oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
 					mc.HandleError(err3)
 					cd[k].Draw = append(cd[k].Draw, oddsD)
-					fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1 + " as of: " + betime.String())
+					//fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1 + " as of: " + betime.String())
 				}
 				alls[a].Bookies = cd
 			}
