@@ -38,6 +38,8 @@ So ideally there are a few things I would like to do:
 4. Once I have goroutines assigned I would like to dockerize this application and then set it to run every 10 seconds or so. To do this I will need to use the "last_updated" flag that is emphasized in the documentation.
 5. Obviously this needs to be deployed somewhere. 
 6. Need to do some data science on the data that we are gathering (probably predictive analytics) to compare bookmakers.
+7. Unit tests need to be added (I should know better by now). 
+8. Effective logging needs to be added (currently it's in myconfig and just does a println)
 
 ## TODOS:
 My next step is to tackle #4 above first. 
