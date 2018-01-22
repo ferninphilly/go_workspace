@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="en">
+<select>
+{{range $k, $v := . }}
+	<option value="{{ $k }}">{{ $v }}</option>
+ {{ end }}
+ </select>

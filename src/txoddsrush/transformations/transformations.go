@@ -54,7 +54,7 @@ func CreateCharts() []ChartCreate {
 	alls := make([]ChartCreate, len(fo.Match))
 	//Create our slice of chartdata pretty.Print(fo)
 	for a, el := range fo.Match {
-		alls[a].MatchName = "Match: " + el.Hteam + " (Home) vs " + el.Ateam + " (Away)"
+		alls[a].MatchName = "Match: " + el.Hteam + " (Home) vs " + el.Ateam + " (Away)" + "\n Match date: " + el.Time[0:10] + " @ " + el.Time[11:16]
 		alls[a].HomeTeam = el.Hteam
 		alls[a].AwayTeam = el.Ateam
 		cd := make([]ChartData, len(el.Bookmaker))
@@ -78,7 +78,7 @@ func CreateCharts() []ChartCreate {
 					oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
 					mc.HandleError(err3)
 					cd[k].Draw = append(cd[k].Draw, oddsD)
-					fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1)
+					fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1 + " as of: " + betime.String())
 				}
 				alls[a].Bookies = cd
 			}

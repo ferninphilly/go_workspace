@@ -1,2 +1,16 @@
-<h1>Match: {{.MatchName}}</h1>
-<img width=100%>{{.Chart.Render(chart.PNG, w)}}</img>
+<!DOCTYPE html>
+<html lang="en">
+    <title>Totes a thing now!</title>
+    <h1>Please select a match</h1>
+    <body>
+        <form action="/matchHandler" method="post">
+<select id="matchid" name="matchid">
+{{range $k, $v := . }}
+	<option value="{{ $k }}">{{ $v }}</option>
+ {{ end }}
+ </select>
+</br>
+ <input type="submit" value="submit">
+    </form>
+</body>
+ </html>

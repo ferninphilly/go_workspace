@@ -2,10 +2,14 @@
 package visualizations
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"net/http"
-	mc "txoddsrush/myconfig"
+	"strconv"
 	tx "txoddsrush/transformations"
+
+	mc "txoddsrush/myconfig"
 
 	chart "github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
@@ -29,16 +33,23 @@ var matchname, chartData = tx.TransformChartData()
 /*func (p *Page) save() error {
 	filename := p.Title + ".txt"
 	return ioutil.WriteFile(filename, p.Body, 0600)
-}*/
-/*
+}
+
 func indexHandler(w http.ResponseWriter, r *http.Request, title string) {
 	var p Page
 	p.drawChart(w, "First try dude", "A match")
 	pretty.Print(p)
 	renderTemplate(w, "index", p)
-} */
+}
+*/
+func handlerForm(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("./visualizations/webpages/index.html")
+	mc.HandleError(err)
+	err2 := t.Execute(w, matchname)
+	mc.HandleError(err2)
+}
 
-func DrawChart() []chart.Chart {
+func drawChart() []chart.Chart {
 	allchrt := make([]chart.Chart, len(matchname))
 	for k, v := range matchname {
 		graph := chart.Chart{
@@ -77,17 +88,25 @@ func DrawChart() []chart.Chart {
 	return allchrt
 }
 
-func renderChart(w http.ResponseWriter, r *http.Request) {
-	allchrt := DrawChart()
-	collector := &chart.ImageWriter{}
-	allchrt[4].Render(chart.PNG, collector)
-	/*	for _, v := range allchrt {
-		err := v.Render(chart.PNG, collector)
-		mc.HandleError(err)
-	} */
-	img, err := collector.Image()
+func matchHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
 	mc.HandleError(err)
-	fmt.Fprintf(w, img)
+	renderChart(w, r, r.Form["matchid"][0])
+}
+
+func renderChart(w http.ResponseWriter, r *http.Request, matchid string) {
+	allchrt := drawChart()
+	var chrtn int
+	chrtn, errco := strconv.Atoi(matchid)
+	mc.HandleError(errco)
+	buffer := new(bytes.Buffer)
+	err := allchrt[chrtn].Render(chart.PNG, buffer)
+	mc.HandleError(err)
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Length", strconv.Itoa(len(buffer.Bytes())))
+	if _, err := w.Write(buffer.Bytes()); err != nil {
+		mc.HandleError(err)
+	}
 }
 
 /*
@@ -150,7 +169,8 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 func RunServer() {
 	/*	http.HandleFunc("/view/", makeHandler(viewHandler))
 		http.HandleFunc("/edit/", makeHandler(editHandler)) */
-	http.HandleFunc("/", renderChart)
+	http.HandleFunc("/", handlerForm)
+	http.HandleFunc("/matchHandler", matchHandler)
 
 	//http.HandleFunc("/save/", makeHandler(saveHandler))
 	http.ListenAndServe(":9090", nil)
