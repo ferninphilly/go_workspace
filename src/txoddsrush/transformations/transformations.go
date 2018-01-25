@@ -7,16 +7,13 @@ import (
 	"strings"
 	"time"
 	ai "txoddsrush/apiinterface"
-	db "txoddsrush/dbconnection"
 	mc "txoddsrush/myconfig"
-
-	chart "github.com/wcharczuk/go-chart"
-	"github.com/wcharczuk/go-chart/drawing"
 )
 
 //Teams is the struct to contain our teams
 
 //ChartCreate will contain data for the charts
+/*
 type ChartCreate struct {
 	LastUpdated string
 	MatchName   string
@@ -35,8 +32,6 @@ type ChartData struct {
 	Draw       []float64
 }
 
-var fo = ai.ReturnFeedOdds()
-
 func getMaxNNelements(rns int) int {
 	y := 0
 	for _, v := range fo.Match[rns].Bookmaker {
@@ -47,14 +42,14 @@ func getMaxNNelements(rns int) int {
 		}
 	}
 	return int(y)
-}
+} */
 
 //CreateCharts is how we populate the ChartCreate struct with data from the api
-func CreateCharts() []ChartCreate {
+/*func CreateCharts() []ChartCreate {
 	alls := make([]ChartCreate, len(fo.Match))
 	//Create our slice of chartdata pretty.Print(fo)
 	for a, el := range fo.Match {
-		alls[a].MatchName = "Match: " + el.Hteam + " (Home) vs " + el.Ateam + " (Away)" + "\n Match date: " + el.Time[0:10] + " @ " + el.Time[11:16]
+		alls[a].MatchName = el.Hteam + " vs " + el.Ateam + " on " + el.Time[0:10] + " @ " + el.Time[11:16]
 		alls[a].HomeTeam = el.Hteam
 		alls[a].AwayTeam = el.Ateam
 		cd := make([]ChartData, len(el.Bookmaker))
@@ -78,7 +73,7 @@ func CreateCharts() []ChartCreate {
 					oddsD, err3 := strconv.ParseFloat(ssv.O3, 64)
 					mc.HandleError(err3)
 					cd[k].Draw = append(cd[k].Draw, oddsD)
-					//fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1 + " as of: " + betime.String())
+					fmt.Println("Name: " + sv.Attributes.Name + " Ival: " + ssv.Attributes.I + " HteamWin: " + ssv.O1 + " as of: " + betime.String())
 				}
 				alls[a].Bookies = cd
 			}
@@ -88,7 +83,7 @@ func CreateCharts() []ChartCreate {
 }
 
 //TransformChartData is the function that puts chart data into the Continuous Series.
-func TransformChartData() ([]string, [][]chart.Series) {
+func TransformChartData() ([]string, []string, [][]chart.Series) {
 	chrt := CreateCharts()
 	colors := [12]drawing.Color{
 		drawing.ColorBlack,
@@ -106,6 +101,7 @@ func TransformChartData() ([]string, [][]chart.Series) {
 	}
 	allsries := make([][]chart.Series, len(chrt))
 	var matches = make([]string, len(chrt))
+	var hteam = make([]string, len(chrt))
 	//	layout := "Mon Jan 02 2006 15:04:05 GMT-0700"
 	for k, v := range chrt {
 		var sries = make([]chart.TimeSeries, len(v.Bookies))
@@ -129,19 +125,48 @@ func TransformChartData() ([]string, [][]chart.Series) {
 			}
 		}
 		matches[k] = v.MatchName
+		hteam[k] = v.HomeTeam
 
 	}
-	return matches, allsries
+	return hteam, matches, allsries
 }
 
-//InsertBookies is basically how I created the Bookies table.
+*/
+
+func stringToTimestamp(strtime string) int64 {
+	layout := "2006-01-02T15:04:05+00:00"
+	t, err := time.Parse(layout, strtime)
+	mc.HandleError(err)
+	return t.Unix()
+}
+
+//ReadyMatchData prepares interfaces to be inserted in to the fact_matches table
+func ReadyMatchData(fo ai.CreateOdds) (string, [][]interface{}) {
+	now := int32(time.Now().UTC().Unix())
+	cells := make([][]interface{}, len(fo.Match))
+	filename := "dbconnection/sqlQueries/InsertMatches.sql"
+	if len(fo.Match) > 0 {
+		lu, err := strconv.Atoi(fo.Attributes.Timestamp)
+		mc.HandleError(err)
+		for k, v := range fo.Match {
+			gt := strings.Split(v.Time, "T")
+			matchTime := stringToTimestamp(v.Time)
+			cells[k] = []interface{}{v.Attributes.ID, v.Group, v.Hteam, v.Ateam, gt[0], gt[1][:5], lu, matchTime, now}
+		}
+		return filename, cells
+	}
+	fmt.Println("There is an error- the length of the Match struct is 0- which means NO matches. Check config file- maybe increase days?")
+	return filename, cells
+}
+
+//ReadyBookiesData is basically how I created the Bookies table.
 //It will error out for primary key constraints if you try to do it twice.
-func InsertBookies() string {
-	query := "dbconnection/sqlQueries/InsertBookies.sql"
-	a := ai.ReturnFeedOdds()
+func ReadyBookiesData(fo ai.CreateOdds) (string, [][]interface{}) {
+	now := int32(time.Now().UTC().Unix())
+	filename := "dbconnection/sqlQueries/InsertBookies.sql"
+	var cells [][]interface{}
 	ub := make(map[string]string) //for "unique bookies"
-	cfg := mc.ReturnConfig()
-	for _, v := range a.Match {
+	for _, v := range fo.Match {
 		for _, val := range v.Bookmaker {
 			if _, ok := ub[val.Attributes.Bid]; !ok {
 				ub[val.Attributes.Bid] = val.Attributes.Name
@@ -149,56 +174,54 @@ func InsertBookies() string {
 		}
 	}
 	for k, v := range ub {
-		db.RunQuery(cfg, query, k, v)
-		result := fmt.Sprintf("Entered bookie %s into table", v)
-		fmt.Println(result)
+		cells = append(cells, []interface{}{k, v, now})
 	}
-	return "Completed entry for all bookies"
+	return filename, cells
 }
 
-//InsertMatches is how I inserted into the "dim_matches" table
-func InsertMatches() string {
-	filename := "dbconnection/sqlQueries/InsertMatches.sql"
-	results := ai.ReturnFeedOdds()
-	cfg := mc.ReturnConfig()
-	lu := results.Attributes.Timestamp
-	for _, v := range results.Match {
-		gt := strings.Split(v.Time, "T")
-		db.RunQuery(cfg, filename, v.Attributes.ID, v.Group, v.Hteam, v.Ateam, gt[0], gt[1][:5], lu)
-	}
-	return fmt.Sprintf("Completed entries for all matches for the next %s days", cfg.APIData.URLOptions["days"])
+func calculateMargins(strOdds []string) [7]float64 {
+	win, err := strconv.ParseFloat(strOdds[0], 64)
+	mc.HandleError(err)
+	lose, errl := strconv.ParseFloat(strOdds[1], 64)
+	mc.HandleError(errl)
+	draw, errd := strconv.ParseFloat(strOdds[2], 64)
+	mc.HandleError(errd)
+	margin := ((1 / win) + (1 / lose) + (1 / draw)) - 1
+	actualWin := (3 * win) / (3 - (margin * win))
+	actualLose := (3 * lose) / (3 - (margin * lose))
+	actualDraw := (3 * draw) / (3 - (margin * draw))
+	return [7]float64{win, lose, draw, margin, actualWin, actualLose, actualDraw}
+
 }
 
-//InsertTeams populates the dim_teams table
-func InsertTeams() string {
-	now := int32(time.Now().UTC().Unix())
-	query := "dbconnection/sqlQueries/InsertTeamNames.sql"
-	results := ai.ReturnTeamList()
-	cfg := mc.ReturnConfig()
-	for _, v := range results.Competitors.Competitor {
-		db.RunQuery(cfg, query, v.ID, v.Name, v.Group, v.Countryid, v.Sportid, fmt.Sprint(now))
-		fmt.Println("Completed insert for " + v.Name)
-	}
-	return "Successfully populated the dim_teams table"
-}
-
-//InsertOdds is how I am updating the odds settings.
+//ReadyOddsData is how I am updating the odds settings.
 //I will obviously need to update to do upserts because I don't want dupe data.
-func InsertOdds() {
+func ReadyOddsData(fo ai.CreateOdds) (string, [][]interface{}) {
 	now := int32(time.Now().UTC().Unix())
-	cfg := mc.ReturnConfig()
-	d := ai.ReturnFeedOdds()
-	i := 0
-	for _, v := range d.Match {
+	filename := "dbconnection/sqlQueries/InsertOdds.sql"
+	var cells [][]interface{}
+	for _, v := range fo.Match {
 		for _, val := range v.Bookmaker {
 			for _, sv := range val.Offer.Odds {
-				db.RunQuery(cfg, "dbconnection/sqlQueries/InsertOdds.sql", val.Offer.Attributes.ID,
-					val.Attributes.Bid, v.Attributes.ID, sv.Attributes.I, sv.O1, sv.O3, sv.O2,
-					fmt.Sprint(now), fmt.Sprint(now))
-				fmt.Println("Completed insert for row: " + strconv.Itoa(i))
-				i++
+				strOdds := []string{sv.O1, sv.O3, sv.O2}
+				insOdds := calculateMargins(strOdds)
+				oddsTime := stringToTimestamp(sv.Attributes.Time)
+				cells = append(cells, []interface{}{
+					val.Offer.Attributes.ID,
+					val.Attributes.Bid,
+					v.Attributes.ID,
+					sv.Attributes.I,
+					insOdds[0],  //Win
+					insOdds[1],  //Lose
+					insOdds[2],  //Draw
+					oddsTime,    //Time
+					now,         //Last Table Update
+					insOdds[3],  //Margin
+					insOdds[4],  //actual win
+					insOdds[5],  //Actual lose
+					insOdds[6]}) //Actual Draw
 			}
 		}
-
 	}
+	return filename, cells
 }

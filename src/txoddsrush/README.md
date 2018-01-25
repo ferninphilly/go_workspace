@@ -40,6 +40,7 @@ So ideally there are a few things I would like to do:
 6. Need to do some data science on the data that we are gathering (probably predictive analytics) to compare bookmakers.
 7. Unit tests need to be added (I should know better by now). 
 8. Effective logging needs to be added (currently it's in myconfig and just does a println)
+9. I need to clean up the error where if a bookmaker has only one value the json does not unmarshal into a struct. I can fix this with interfaces- just need to hit it on my second pass. 
 
 ## TODOS:
 My next step is to tackle #4 above first. 

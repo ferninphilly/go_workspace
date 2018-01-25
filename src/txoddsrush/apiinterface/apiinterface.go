@@ -9,16 +9,18 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 	mc "txoddsrush/myconfig"
 
 	xj "github.com/basgys/goxml2json"
 )
 
+//So if we are going to get this data we are going to have to start by getting the matches...so let's get the matches.
+
 /*CreateOdds is the struct that currently holds the data.
 TODO on this is to break this apart. Right now the data won't unmarshal into
 the smaller sections. I am keeping the structs around below anyway because I want to
-come back to this rather annoying problem. */
+come back to this rather annoying problem.
+This is also the struct that can be used to unmarshal match data. */
 type CreateOdds struct {
 	Attributes struct {
 		Time      string `json:"time"`
@@ -78,15 +80,24 @@ type Bookmaker []struct {
 //Offer contains Offer->Odds
 type Offer struct {
 	Attributes struct {
-		ID          string    `json:"id"`
-		N           string    `json:"n"`
-		Ot          string    `json:"ot"`
-		Otname      string    `json:"otname"`
-		LastUpdated time.Time `json:"last_updated"`
-		Flags       string    `json:"flags"`
-		Bmoid       string    `json:"bmoid"`
+		ID          string `json:"id"`
+		N           string `json:"n"`
+		Ot          string `json:"ot"`
+		Otname      string `json:"otname"`
+		LastUpdated string `json:"last_updated"`
+		Flags       string `json:"flags"`
+		Bmoid       string `json:"bmoid"`
 	} `json:"@attributes"`
 	Odds
+}
+
+//Mainstruct is the highest level struct for unmarshalling data
+type Mainstruct struct {
+	Attributes struct {
+		Time      string
+		Timestamp string
+	}
+	Match
 }
 
 //Match contains Bookmaker->Offer->Odds
@@ -159,6 +170,7 @@ func urlEncode(data map[string]string) string {
 		buf.WriteByte('&')
 	}
 	eurl := buf.String()
+	fmt.Println(eurl[0 : len(eurl)-1])
 	return eurl[0 : len(eurl)-1]
 }
 
@@ -173,39 +185,38 @@ func createURL() string {
 	buf.WriteString(cfg.APIData.EndURL)
 	buf.WriteString(bodstring)
 	buf.WriteString(extras)
+	fmt.Println(buf.String())
 	return buf.String()
 }
 
-func callAPI(url string) string {
+func callAPI(url string) []byte {
 	response, err := http.Get(url)
 	mc.HandleError(err)
 	defer response.Body.Close()
 	contents, err := ioutil.ReadAll(response.Body)
 	mc.HandleError(err)
-	return string(contents) //Returns a string to make troubleshooting easier
+	return contents //Return a string to make troubleshooting easier- string(contents)
 }
 
 //createFeedOdds is how we unmarshal data. This will be the struct to return
-func (fo *CreateOdds) createFeedOdds(contents string) {
-	error := json.Unmarshal([]byte(contents), &fo)
-	mc.HandleError(error)
+func (fo *CreateOdds) createFeedOdds(contents []byte) {
+	err := json.Unmarshal([]byte(contents), &fo)
+	mc.HandleError(err)
 }
 
 //CreateTeamList creates our list of British soccer teams
 //There is no option to get JSON directly so we need to convert from XML
-func (tn *Teams) createTeamList(contents string) {
-	updjson := xmlToJSON(contents)
+func (tn *Teams) createTeamList(contents []byte) {
+	updjson := xmlToJSON(string(contents))
 	error := json.Unmarshal([]byte(updjson), &tn)
 	mc.HandleError(error)
 }
 
 //ReturnFeedOdds is the return function for the odds calculations.
-func ReturnFeedOdds() CreateOdds {
-	var fo CreateOdds
+func (fo *CreateOdds) ReturnFeedOdds() {
 	url := createURL()
 	contents := callAPI(url)
 	fo.createFeedOdds(contents)
-	return fo
 }
 
 //ReturnTeamList is the return function for team list depending on what's in myconfig
@@ -219,7 +230,8 @@ func ReturnTeamList() Teams {
 
 //ReturnBookies is how to get the Unique Bookies
 func ReturnBookies() map[string]string {
-	fo := ReturnFeedOdds()
+	var fo CreateOdds
+	fo.ReturnFeedOdds()
 	ub := make(map[string]string) //for "unique bookies"
 	for _, v := range fo.Match {
 		for _, val := range v.Bookmaker {
